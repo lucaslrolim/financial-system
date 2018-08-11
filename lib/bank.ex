@@ -1,0 +1,2 @@
+defmodule Finance do
+end
