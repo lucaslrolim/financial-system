@@ -6,8 +6,8 @@ defmodule Currency do
   alias Decimal, as: D
 
   def new(amount, currency_code)
-    when amount < 0 do
-      raise("ERROR: The amount must be a positive number")
+      when amount < 0 do
+    raise("ERROR: The amount must be a positive number")
   end
 
   @doc """
@@ -24,18 +24,20 @@ defmodule Currency do
       %Finance.Money{amount: #Decimal<10.00>, currency: :BRL, exchange_rate: nil, precision: 2}
   """
   def new(amount, currency_code) do
-    precision = 2 # temp variable jus to tests
+    # temp variable jus to tests
+    precision = 2
 
-    norm_amount = amount
-                  |> D.new
-                  |> D.round(precision, :floor)
+    norm_amount =
+      amount
+      |> D.new()
+      |> D.round(precision, :floor)
 
     %Finance.Money{currency: currency_code, amount: norm_amount, precision: precision}
   end
 
   def sum(%Finance.Money{currency: currency_a}, %Finance.Money{currency: currency_b})
-    when currency_a != currency_b do
-      raise("ERROR: Different currencies.")
+      when currency_a != currency_b do
+    raise("ERROR: Different currencies.")
   end
 
   @doc """
@@ -56,13 +58,13 @@ defmodule Currency do
       %Finance.Money{ amount: #Decimal<20.50>, currency: :BRL, exchange_rate: nil, precision: 2 }
   """
 
-  def sum(a,b) do
-    %Finance.Money{a | amount: D.add(a.amount, b.amount) }
+  def sum(a, b) do
+    %Finance.Money{a | amount: D.add(a.amount, b.amount)}
   end
 
   def sub(%Finance.Money{amount: amount_a}, %Finance.Money{amount: amount_b})
-    when amount_a < amount_b do
-      raise("ERROR: Negative result. The first argument should be greater than the second.")
+      when amount_a < amount_b do
+    raise("ERROR: Negative result. The first argument should be greater than the second.")
   end
 
   @doc """
@@ -87,13 +89,13 @@ defmodule Currency do
   """
 
   def sub(a, b) do
-    negative_b = %Finance.Money{b | amount: D.minus(b.amount) }
-    %Finance.Money{a | amount: Currency.sum(a, negative_b ) }
+    negative_b = %Finance.Money{b | amount: D.minus(b.amount)}
+    %Finance.Money{a | amount: Currency.sum(a, negative_b)}
   end
 
   def mult(a, mult_factor)
-    when mult_factor < 1 do
-      raise("ERROR: Invalid multiplier.")
+      when mult_factor < 1 do
+    raise("ERROR: Invalid multiplier.")
   end
 
   @doc """
@@ -114,12 +116,12 @@ defmodule Currency do
   """
 
   def mult(a, mult_factor) do
-    %Finance.Money{a | amount: D.mult(a.amount, mult_factor) }
+    %Finance.Money{a | amount: D.mult(a.amount, mult_factor)}
   end
 
   def div(a, div_factor)
-    when div_factor <= 0 do
-      raise("ERROR: Invalid divisor.")
+      when div_factor <= 0 do
+    raise("ERROR: Invalid divisor.")
   end
 
   @doc """
@@ -146,13 +148,14 @@ defmodule Currency do
   """
 
   def div(a, div_factor) do
-    result_amount = D.div(a.amount, div_factor)
-            |> D.round(a.precision, :floor)
+    result_amount =
+      D.div(a.amount, div_factor)
+      |> D.round(a.precision, :floor)
 
-    result = %Finance.Money{a | amount: result_amount }
-    rem = Currency.sub(a, Currency.mult(result, div_factor) )
+    result = %Finance.Money{a | amount: result_amount}
+    rem = Currency.sub(a, Currency.mult(result, div_factor))
 
-    money_atom = D.new( :math.pow(10,-a.precision) )
+    money_atom = D.new(:math.pow(10, -a.precision))
 
     if result_amount < money_atom do
       raise("ERROR: Value to low to be properly represented.")
@@ -160,5 +163,4 @@ defmodule Currency do
 
     %{result: result, rem: rem}
   end
-
 end
