@@ -14,7 +14,7 @@ defmodule StoneChallenge.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger, :httpoison]
     ]
   end
 
@@ -22,6 +22,8 @@ defmodule StoneChallenge.MixProject do
   defp deps do
     [
       {:ex_doc, "~> 0.12"},
+      {:httpoison, "~> 1.0"},
+      {:poison, "~> 3.1"},
       {:decimal, "~> 1.0"}
     ]
   end

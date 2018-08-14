@@ -1,3 +1,3 @@
-defmodule Finance.Account do
+defmodule FinancialSystem.Account do
   defstruct id: nil
 end
