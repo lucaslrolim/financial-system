@@ -14,15 +14,12 @@ defmodule Currency do
     Creates a new Money structure to be used in a financial transaction or operated
     with other money structures.
 
-  ## Parameters
+  ## Examples
 
-    - amount: amount of money that this sctucture will represent. | float
-    - currency_code: atom that represents the currency's ISO 4217 code. | atom
-
-   ## Example
       iex> Currency.new(10,:BRL)
-      %Finance.Money{amount: #Decimal<10.00>, currency: :BRL, exchange_rate: nil, precision: 2}
+      %Finance.Money{ amount: Decimal.new("10.00"), currency: :BRL, precision: 2, symbol: nil }
   """
+
   def new(amount, currency_code) do
     # temp variable jus to tests
     precision = 2
@@ -46,16 +43,12 @@ defmodule Currency do
 
     It will raise an error if the Money structures don't have the same currency code.
 
-  ## Parameters
+  ## Examples
 
-    - a: %Money{}
-    - b: %Money{}
-
-   ## Example
       iex> a = Currency.new(10,:BRL)
       iex> b = Currency.new(10.50,:BRL)
       iex> Currency.sum(a,b)
-      %Finance.Money{ amount: #Decimal<20.50>, currency: :BRL, exchange_rate: nil, precision: 2 }
+      %Finance.Money{ amount: Decimal.new("20.50"), currency: :BRL, precision: 2, symbol: nil }
   """
 
   def sum(a, b) do
@@ -76,21 +69,17 @@ defmodule Currency do
     As it's impossible to have negative amounts of money, the first argument must have an amount value
     greater than the second.
 
-  ## Parameters
+  ## Examples
 
-    - a: %Money{}
-    - b: %Money{}
-
-   ## Example
       iex> a = Currency.new(20.70,:BRL)
       iex> b = Currency.new(10.50,:BRL)
       iex> Currency.sub(a,b)
-      %Finance.Money{ amount: #Decimal<10.20>, currency: :BRL, exchange_rate: nil, precision: 2 }
+      %Finance.Money{ amount: Decimal.new("10.20"), currency: :BRL, precision: 2, symbol: nil }
   """
 
   def sub(a, b) do
     negative_b = %Finance.Money{b | amount: D.minus(b.amount)}
-    %Finance.Money{a | amount: Currency.sum(a, negative_b)}
+    Currency.sum(a, negative_b)
   end
 
   def mult(a, mult_factor)
@@ -104,15 +93,11 @@ defmodule Currency do
 
     The second argument must be a positive number.
 
-  ## Parameters
+  ## Examples
 
-    - a: %Money{}
-    - b: multiplier | integer
-
-   ## Example
       iex> a = Currency.new(10.50,:BRL)
-      iex> Currency.sub(a, 2)
-      %Finance.Money{ amount: #Decimal<21.00>, currency: :BRL, exchange_rate: nil, precision: 2 }
+      iex> Currency.mult(a, 2)
+      %Finance.Money{ amount: Decimal.new("21.00"), currency: :BRL, precision: 2, symbol: nil }
   """
 
   def mult(a, mult_factor) do
@@ -134,17 +119,26 @@ defmodule Currency do
     The method will raise an error if the result was minor than the atomic element of the currecy.
       e.g: A currency that have 2 digits precision will raise an error if the result is less than 0.01
 
-  ## Parameters
+  ## Examples
 
-    - a: %Money{}
-    - b: divider | integer
-
-   ## Example
       iex> a = Currency.new(30,:BRL)
       iex> Currency.div(a, 2)
-      %rem: %Finance.Money{ amount: %Finance.Money{ amount: #Decimal<0.00>,
-      currency: :BRL, exchange_rate: nil, precision: 2 }, currency: :BRL, exchange_rate: nil, precision: 2 },
-      result: %Finance.Money{ amount: #Decimal<15.00>, currency: :BRL, exchange_rate: nil, precision: 2 } }
+      %{
+        rem:
+        %Finance.Money{
+          amount: Decimal.new("0.00"),
+          currency: :BRL,
+          precision: 2,
+          symbol: nil
+        },
+        result:
+        %Finance.Money{
+          amount: Decimal.new("15.00"),
+          currency: :BRL,
+          precision: 2,
+          symbol: nil
+        }
+      }
   """
 
   def div(a, div_factor) do
