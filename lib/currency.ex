@@ -14,22 +14,27 @@ defmodule Currency do
     Creates a new Money structure to be used in a financial transaction or operated
     with other money structures.
 
+    The currency code atom must be in uppercase.
+
   ## Examples
 
       iex> Currency.new(10,:BRL)
       %Finance.Money{ amount: Decimal.new("10.00"), currency: :BRL, precision: 2, symbol: nil }
   """
 
-  def new(amount, currency_code) do
-    # temp variable jus to tests
-    precision = 2
-
+  def new(amount, currency_code, precision \\ 2) do
     norm_amount =
       amount
       |> D.new()
       |> D.round(precision, :floor)
 
-    %Finance.Money{currency: currency_code, amount: norm_amount, precision: precision}
+
+    if Currency.valid_currency?(currency_code) do
+      %Finance.Money{currency: currency_code, amount: norm_amount, precision: precision}
+    else
+      raise(ArgumentError, message: "ERROR: invalid currency code")
+    end
+
   end
 
   def sum(%Finance.Money{currency: currency_a}, %Finance.Money{currency: currency_b})
@@ -157,4 +162,42 @@ defmodule Currency do
 
     %{result: result, rem: rem}
   end
+
+  @doc """
+    Checks if the currency code is in compliance with ISO 4217.
+
+  ## Examples
+
+      iex> Currency.valid_currency?(:BRL)
+      true
+  """
+
+  def valid_currency?(currecy_code) do
+      currencies = Currency.get_currencies()
+
+      status = currencies
+      |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
+      |> Map.has_key?(currecy_code)
+
+  end
+
+  @doc """
+    Gets a list of all currencies in compliance with ISO 4217.
+
+  ## Examples
+
+      iex> currencies = Currency.get_currencies()
+      iex> Map.get(currencies,"BRL")
+      "Brazilian Real"
+  """
+
+  def get_currencies() do
+    currencies = Utils.get_json("currencies_list.json")
+
+    case currencies do
+      {:ok, currencies} -> currencies
+      {:error, _reason} -> raise("ERROR: Currencies list not found.")
+    end
+  end
+
 end

@@ -6,7 +6,7 @@ defmodule FinancialSystem do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         body
         |> Poison.decode!()
-        |> Map.get(["rates"])
+        |> Map.get("rates")
         |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
 
       {:error, %HTTPoison.Response{status_code: 404}} ->
