@@ -14,19 +14,13 @@ defmodule CurrencyTest do
     end
   end
 
-  test "Error when creating a currency using negative precision" do
-    assert_raise ArgumentError, fn ->
-      Currency.new(10.0, :BRL, -1)
-    end
-  end
-
   test "Creates a currency with arbitrary precision" do
-    assert Currency.new(20, :JPY, 0) ==
+    assert Currency.new(20, :JPY) ==
              %Currency.Money{amount: Decimal.new("20"), currency: :JPY, precision: 0, symbol: nil}
   end
 
   test "Normalize currency precision" do
-    assert Currency.new(20.892932737, :JPY, 0) ==
+    assert Currency.new(20.892932737, :JPY) ==
              %Currency.Money{amount: Decimal.new("20"), currency: :JPY, precision: 0, symbol: nil}
   end
 
@@ -74,13 +68,13 @@ defmodule CurrencyTest do
   end
 
   test "Checks non exact divisions" do
-    a = Currency.new(10, :JPY, 0)
+    a = Currency.new(10, :JPY)
     %{result: %{amount: result_amount}, rem: %{amount: rem_amount}} = Currency.div(a, 3)
     assert {result_amount, rem_amount} = {Decimal.new("3"), Decimal.new("1")}
   end
 
   test "Checks division precision" do
-    a = Currency.new(10, :JPY, 0)
+    a = Currency.new(10, :JPY)
     %{result: %{amount: result_amount}, rem: %{amount: rem_amount}} = Currency.div(a, 2)
     assert {result_amount, rem_amount} = {Decimal.new("5"), Decimal.new("0")}
   end

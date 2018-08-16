@@ -1,18 +1,13 @@
 defmodule Currency do
-  @moduledox """
+  @moduledoc """
     Provides methods for creating and handling currency in compliance with ISO 4217 rules
   """
 
   alias Decimal, as: D
 
-  def new(amount, currency_code)
+  def new(amount, _currency_code)
       when amount < 0 do
     raise("the amount must be a positive number")
-  end
-
-  def new(amount, currency_code, precision)
-      when precision < 0 do
-    raise(ArgumentError, message: "the precision must be bigger than 1")
   end
 
   @doc """
@@ -27,13 +22,13 @@ defmodule Currency do
       %Currency.Money{amount: Decimal.new("10.00"), currency: :BRL, precision: 2, symbol: nil}
   """
 
-  def new(amount, currency_code, precision \\ 2) do
-    norm_amount =
-      amount
-      |> D.new()
-      |> D.round(precision, :floor)
-
+  def new(amount, currency_code) do
     if Currency.valid_currency?(currency_code) do
+      precision = get_currency_precison(currency_code)
+      norm_amount =
+        amount
+        |> D.new()
+        |> D.round(precision, :floor)
       %Currency.Money{currency: currency_code, amount: norm_amount, precision: precision}
     else
       raise(ArgumentError, message: "invalid currency code")
@@ -61,7 +56,7 @@ defmodule Currency do
 
   def sum(
         %Currency.Money{amount: amount_a} = money_a,
-        %Currency.Money{amount: amount_b} = money_b
+        %Currency.Money{amount: amount_b}
       ) do
     %Currency.Money{money_a | amount: D.add(amount_a, amount_b)}
   end
@@ -89,14 +84,14 @@ defmodule Currency do
   """
 
   def sub(
-        %Currency.Money{amount: amount_a} = money_a,
+        money_a,
         %Currency.Money{amount: amount_b} = money_b
       ) do
     negative_b = %Currency.Money{money_b | amount: D.minus(amount_b)}
     Currency.sum(money_a, negative_b)
   end
 
-  def mult(%Currency.Money{amount: amount} = money, mult_factor)
+  def mult(_money, mult_factor)
       when mult_factor < 1 do
     raise(ArgumentError, message: "the multiplier must be bigger than 1")
   end
@@ -119,7 +114,7 @@ defmodule Currency do
     %Currency.Money{money | amount: result}
   end
 
-  def div(money, div_factor)
+  def div(_money, div_factor)
       when div_factor < 1 do
     raise(ArgumentError, message: "the divisor must be a positive number")
   end
@@ -183,10 +178,7 @@ defmodule Currency do
   """
 
   def valid_currency?(currecy_code) do
-    currencies = Currency.get_currencies()
-
-    status =
-      currencies
+      Currency.get_currencies()
       |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
       |> Map.has_key?(currecy_code)
   end
@@ -197,7 +189,7 @@ defmodule Currency do
   ## Examples
 
       iex> currencies = Currency.get_currencies()
-      iex> Map.get(currencies,"BRL")
+      iex> Map.get(currencies,"BRL")["name"]
       "Brazilian Real"
   """
 
@@ -208,5 +200,13 @@ defmodule Currency do
       {:ok, currencies} -> currencies
       {:error, _reason} -> raise("currencies list not found")
     end
+  end
+
+  def get_currency_precison(currency_code) do
+    currencies =
+      Currency.get_currencies()
+      |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
+
+    Map.get(currencies, currency_code)["fractionSize"]
   end
 end
