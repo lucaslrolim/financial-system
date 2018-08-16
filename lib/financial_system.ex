@@ -1,5 +1,5 @@
 defmodule FinancialSystem do
-  def get_rates() do
+  def get_rates do
     url = System.get_env("EXCHANGE_API")
 
     case HTTPoison.get(url) do

@@ -7,7 +7,12 @@ defmodule Currency do
 
   def new(amount, currency_code)
       when amount < 0 do
-    raise("ERROR: The amount must be a positive number")
+    raise("the amount must be a positive number")
+  end
+
+  def new(amount, currency_code, precision)
+      when precision < 0 do
+    raise(ArgumentError, message: "the precision must be bigger than 1")
   end
 
   @doc """
@@ -19,7 +24,7 @@ defmodule Currency do
   ## Examples
 
       iex> Currency.new(10,:BRL)
-      %Finance.Money{ amount: Decimal.new("10.00"), currency: :BRL, precision: 2, symbol: nil }
+      %Currency.Money{amount: Decimal.new("10.00"), currency: :BRL, precision: 2, symbol: nil}
   """
 
   def new(amount, currency_code, precision \\ 2) do
@@ -28,18 +33,16 @@ defmodule Currency do
       |> D.new()
       |> D.round(precision, :floor)
 
-
     if Currency.valid_currency?(currency_code) do
-      %Finance.Money{currency: currency_code, amount: norm_amount, precision: precision}
+      %Currency.Money{currency: currency_code, amount: norm_amount, precision: precision}
     else
-      raise(ArgumentError, message: "ERROR: invalid currency code")
+      raise(ArgumentError, message: "invalid currency code")
     end
-
   end
 
-  def sum(%Finance.Money{currency: currency_a}, %Finance.Money{currency: currency_b})
+  def sum(%Currency.Money{currency: currency_a}, %Currency.Money{currency: currency_b})
       when currency_a != currency_b do
-    raise("ERROR: Different currencies.")
+    raise("different currencies")
   end
 
   @doc """
@@ -53,16 +56,19 @@ defmodule Currency do
       iex> a = Currency.new(10,:BRL)
       iex> b = Currency.new(10.50,:BRL)
       iex> Currency.sum(a,b)
-      %Finance.Money{ amount: Decimal.new("20.50"), currency: :BRL, precision: 2, symbol: nil }
+      %Currency.Money{amount: Decimal.new("20.50"), currency: :BRL, precision: 2, symbol: nil}
   """
 
-  def sum(a, b) do
-    %Finance.Money{a | amount: D.add(a.amount, b.amount)}
+  def sum(
+        %Currency.Money{amount: amount_a} = money_a,
+        %Currency.Money{amount: amount_b} = money_b
+      ) do
+    %Currency.Money{money_a | amount: D.add(amount_a, amount_b)}
   end
 
-  def sub(%Finance.Money{amount: amount_a}, %Finance.Money{amount: amount_b})
+  def sub(%Currency.Money{amount: amount_a}, %Currency.Money{amount: amount_b})
       when amount_a < amount_b do
-    raise("ERROR: Negative result. The first argument should be greater than the second.")
+    raise("negative result. The first argument should be greater than the second")
   end
 
   @doc """
@@ -79,17 +85,20 @@ defmodule Currency do
       iex> a = Currency.new(20.70,:BRL)
       iex> b = Currency.new(10.50,:BRL)
       iex> Currency.sub(a,b)
-      %Finance.Money{ amount: Decimal.new("10.20"), currency: :BRL, precision: 2, symbol: nil }
+      %Currency.Money{amount: Decimal.new("10.20"), currency: :BRL, precision: 2, symbol: nil}
   """
 
-  def sub(a, b) do
-    negative_b = %Finance.Money{b | amount: D.minus(b.amount)}
-    Currency.sum(a, negative_b)
+  def sub(
+        %Currency.Money{amount: amount_a} = money_a,
+        %Currency.Money{amount: amount_b} = money_b
+      ) do
+    negative_b = %Currency.Money{money_b | amount: D.minus(amount_b)}
+    Currency.sum(money_a, negative_b)
   end
 
-  def mult(a, mult_factor)
+  def mult(%Currency.Money{amount: amount} = money, mult_factor)
       when mult_factor < 1 do
-    raise("ERROR: Invalid multiplier.")
+    raise(ArgumentError, message: "the multiplier must be bigger than 1")
   end
 
   @doc """
@@ -102,16 +111,17 @@ defmodule Currency do
 
       iex> a = Currency.new(10.50,:BRL)
       iex> Currency.mult(a, 2)
-      %Finance.Money{ amount: Decimal.new("21.00"), currency: :BRL, precision: 2, symbol: nil }
+      %Currency.Money{amount: Decimal.new("21.00"), currency: :BRL, precision: 2, symbol: nil}
   """
 
-  def mult(a, mult_factor) do
-    %Finance.Money{a | amount: D.mult(a.amount, mult_factor)}
+  def mult(%Currency.Money{amount: amount, precision: precision} = money, mult_factor) do
+    result = D.mult(amount, D.new(mult_factor)) |> D.round(precision, :floor)
+    %Currency.Money{money | amount: result}
   end
 
-  def div(a, div_factor)
-      when div_factor <= 0 do
-    raise("ERROR: Invalid divisor.")
+  def div(money, div_factor)
+      when div_factor < 1 do
+    raise(ArgumentError, message: "the divisor must be a positive number")
   end
 
   @doc """
@@ -130,14 +140,14 @@ defmodule Currency do
       iex> Currency.div(a, 2)
       %{
         rem:
-        %Finance.Money{
+        %Currency.Money{
           amount: Decimal.new("0.00"),
           currency: :BRL,
           precision: 2,
           symbol: nil
         },
         result:
-        %Finance.Money{
+        %Currency.Money{
           amount: Decimal.new("15.00"),
           currency: :BRL,
           precision: 2,
@@ -146,18 +156,18 @@ defmodule Currency do
       }
   """
 
-  def div(a, div_factor) do
+  def div(%Currency.Money{amount: amount, precision: precision} = money, div_factor) do
     result_amount =
-      D.div(a.amount, div_factor)
-      |> D.round(a.precision, :floor)
+      D.div(amount, D.new(div_factor))
+      |> D.round(precision, :floor)
 
-    result = %Finance.Money{a | amount: result_amount}
-    rem = Currency.sub(a, Currency.mult(result, div_factor))
+    result = %Currency.Money{money | amount: result_amount}
+    rem = Currency.sub(money, Currency.mult(result, D.new(div_factor)))
 
-    money_atom = D.new(:math.pow(10, -a.precision))
+    money_atom = D.new(:math.pow(10, -precision))
 
-    if result_amount < money_atom do
-      raise("ERROR: Value to low to be properly represented.")
+    if Decimal.compare(money_atom, result_amount) == D.new(1) do
+      raise("value to low to be properly represented")
     end
 
     %{result: result, rem: rem}
@@ -173,12 +183,12 @@ defmodule Currency do
   """
 
   def valid_currency?(currecy_code) do
-      currencies = Currency.get_currencies()
+    currencies = Currency.get_currencies()
 
-      status = currencies
+    status =
+      currencies
       |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
       |> Map.has_key?(currecy_code)
-
   end
 
   @doc """
@@ -191,13 +201,12 @@ defmodule Currency do
       "Brazilian Real"
   """
 
-  def get_currencies() do
+  def get_currencies do
     currencies = Utils.get_json("currencies_list.json")
 
     case currencies do
       {:ok, currencies} -> currencies
-      {:error, _reason} -> raise("ERROR: Currencies list not found.")
+      {:error, _reason} -> raise("currencies list not found")
     end
   end
-
 end
