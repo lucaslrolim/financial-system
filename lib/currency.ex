@@ -202,6 +202,14 @@ defmodule Currency do
     end
   end
 
+  @doc """
+    Gets currecy precision according to ISO 4217.
+
+  ## Examples
+
+      iex> currencies = Currency.get_currency_precison(:BRL)
+      2
+  """
   def get_currency_precison(currency_code) do
     currencies =
       Currency.get_currencies()
