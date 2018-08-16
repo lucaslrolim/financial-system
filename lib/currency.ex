@@ -1,6 +1,6 @@
 defmodule Currency do
   @moduledoc """
-    Provides methods for creating and handling currency in compliance with ISO 4217 rules
+    Provides methods to creating and handling currency in compliance with ISO 4217 rules
   """
 
   alias Decimal, as: D
@@ -25,10 +25,12 @@ defmodule Currency do
   def new(amount, currency_code) do
     if Currency.valid_currency?(currency_code) do
       precision = get_currency_precison(currency_code)
+
       norm_amount =
         amount
         |> D.new()
         |> D.round(precision, :floor)
+
       %Currency.Money{currency: currency_code, amount: norm_amount, precision: precision}
     else
       raise(ArgumentError, message: "invalid currency code")
@@ -178,9 +180,9 @@ defmodule Currency do
   """
 
   def valid_currency?(currecy_code) do
-      Currency.get_currencies()
-      |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
-      |> Map.has_key?(currecy_code)
+    Currency.get_currencies()
+    |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
+    |> Map.has_key?(currecy_code)
   end
 
   @doc """

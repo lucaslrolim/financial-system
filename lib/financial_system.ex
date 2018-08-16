@@ -1,4 +1,7 @@
 defmodule FinancialSystem do
+  @moduledoc """
+    Provides methods to do financial operations, such as account creation, currency exchange and transfers.
+  """
 
   @doc """
     Create a client account in aour Financial System.
@@ -29,39 +32,91 @@ defmodule FinancialSystem do
   end
 
   def deposit(_account, deposit_value, _currecy)
-    when deposit_value < 0 do
-      raise("deposit value must be a positive number")
+      when deposit_value < 0 do
+    raise("deposit value must be a positive number")
   end
 
-  def deposit(%FinancialSystem.Account{balance: account_balance} = account, deposit_value, deposit_curency) do
+  @doc """
+    Deposits an amount into an user account.
+
+  ## Examples
+
+      iex> account = FinancialSystem.create_account(1, "Lucas Rolim", :JPY)
+      iex> FinancialSystem.check_account_balance(account)
+      "¥0"
+      iex> account = FinancialSystem.deposit(account,10,:JPY)
+      iex> FinancialSystem.check_account_balance(account)
+      "¥10"
+  """
+
+  def deposit(
+        %FinancialSystem.Account{balance: account_balance} = account,
+        deposit_value,
+        deposit_curency
+      ) do
     new_balance = Currency.sum(Currency.new(deposit_value, deposit_curency), account_balance)
     %FinancialSystem.Account{account | balance: new_balance}
   end
 
   def withdrawal(_account, withdrawal_value, _currecy)
-    when withdrawal_value < 0 do
-      raise("withdrawal value must be a positive number")
+      when withdrawal_value < 0 do
+    raise("withdrawal value must be a positive number")
   end
 
-  def withdrawal(%FinancialSystem.Account{balance: account_balance} = account, withdrawal_value, withdrawal_curency) do
-    status = has_fund?(account, withdrawal_value)
-    new_balance = Currency.sub(Currency.new(withdrawal_value, withdrawal_curency), account_balance)
+  @doc """
+    Withdrawals an amount from an user account.
+
+  ## Examples
+
+      iex> account = FinancialSystem.create_account(1, "Lucas Rolim", :BRL)
+      iex> FinancialSystem.check_account_balance(account)
+      "R$0.00"
+      iex> account = FinancialSystem.deposit(account,10,:BRL)
+      iex> FinancialSystem.check_account_balance(account)
+      "R$10.00"
+      iex> account = FinancialSystem.withdrawal(account,5,:BRL)
+      iex> FinancialSystem.check_account_balance(account)
+      "R$5.00"
+  """
+
+  def withdrawal(
+        %FinancialSystem.Account{balance: account_balance} = account,
+        withdrawal_value,
+        withdrawal_curency
+      ) do
+    new_balance =
+      Currency.sub(account_balance, Currency.new(withdrawal_value, withdrawal_curency))
+
     %FinancialSystem.Account{account | balance: new_balance}
   end
 
+  @doc """
+    Checks if the account balance is bigger than a value.
+  """
   def has_fund?(%FinancialSystem.Account{balance: %{amount: account_fund}}, value)
-    when account_fund < value do
-      raise("insufficient balance to complete the withdrawal")
+      when account_fund < value do
+    raise("insufficient balance to complete the withdrawal")
   end
 
-  def check_account_balance(%FinancialSystem.Account{balance: %{amount: account_fund, currency: currency}}) do
+  @doc """
+    Print the account balance and currency's symbol in string format
+
+  ## Examples
+
+      iex> account = FinancialSystem.create_account(1, "Lucas Rolim", :BRL)
+      iex> FinancialSystem.check_account_balance(account)
+      "R$0.00"
+  """
+
+  def check_account_balance(%FinancialSystem.Account{
+        balance: %{amount: account_fund, currency: currency}
+      }) do
     currencies =
-    Currency.get_currencies()
-    |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
+      Currency.get_currencies()
+      |> Map.new(fn {k, v} -> {String.to_atom(k), v} end)
 
-    currency_name  = Map.get(currencies,currency)["symbol"]["grapheme"]
+    currency_name = Map.get(currencies, currency)["symbol"]["grapheme"]
     currency_name <> Decimal.to_string(account_fund)
-
   end
 
   def get_rates do
