@@ -2,7 +2,6 @@ defmodule FinancialSystem do
   @moduledoc """
     Provides methods to do financial operations, such as account creation, currency exchange and transfers.
   """
-  alias Decimal, as: D
 
   @doc """
     Create a client account in aour Financial System.
@@ -132,7 +131,7 @@ defmodule FinancialSystem do
   end
 
   @doc """
-    Print the account balance and currency's symbol in string format
+    Transfers money between two accounts that have the same currency type
 
   ## Examples
 
@@ -148,6 +147,27 @@ defmodule FinancialSystem do
     %FinancialSystem.Account{currency: currency} = sender_account
     sender_account = FinancialSystem.withdrawal(sender_account, value, currency)
     receiver_account = FinancialSystem.deposit(receiver_account, value, currency)
+    {sender_account, receiver_account}
+  end
+
+  @doc """
+    Transfers money between two accounts that have different currency type
+
+  ## Examples
+
+      sender_account = FinancialSystem.create_account(1, "Fidalgo", :BRL)
+      sender_account = FinancialSystem.deposit(sender_account,50, :BRL)
+      receiver_account = FinancialSystem.create_account(2, "Amigo", :BRL)
+      FinancialSystem.transfer_international(sender_account,receiver_account, :UDS, 10)
+  """
+  def transfer_international(sender_account, receiver_account, to_currency, value) do
+    %FinancialSystem.Account{balance: money, currency: from_currency} = sender_account
+    currency_value = Currency.new(value,to_currency)
+    %{amount: coverted_value} = FinancialSystem.exchange(currency_value, from_currency)
+
+    sender_account = FinancialSystem.withdrawal(sender_account, Decimal.to_float(coverted_value), from_currency)
+    receiver_account = FinancialSystem.deposit(receiver_account, value, to_currency)
+
     {sender_account, receiver_account}
   end
 
@@ -172,6 +192,11 @@ defmodule FinancialSystem do
   """
 
   def split_transfer(sender_account, receivers, value, percents) do
+
+    unless Enum.sum(percents) == 1 do
+      raise("percents must sum 1")
+    end
+
     %FinancialSystem.Account{currency: currency} = sender_account
     sender_account = FinancialSystem.withdrawal(sender_account, value, currency)
 
@@ -187,6 +212,62 @@ defmodule FinancialSystem do
       end)
 
     {sender_account, receivers}
+  end
+
+  @doc """
+    Splits a cost or deposit among multiple accounts according to given percents
+
+  ## Examples
+
+      iex> account_1 = FinancialSystem.create_account(1, "Proximus", :BRL)
+      iex> account_1 = FinancialSystem.deposit(account_1, 10, :BRL)
+      iex> account_2 = FinancialSystem.create_account(2, "Bolinha", :BRL)
+      iex> account_2 = FinancialSystem.deposit(account_2, 10, :BRL)
+      iex> account_3 = FinancialSystem.create_account(3, "Botafogo", :BRL)
+      iex> account_3 = FinancialSystem.deposit(account_3, 10, :BRL)
+      iex> [account_1,account_2,account_3] = FinancialSystem.split_value([account_1, account_2, account_3],10,[0.5, 0.3, 0.2], &FinancialSystem.withdrawal/3)
+      iex> FinancialSystem.check_account_balance(account_1)
+      "R$5.00"
+      iex> FinancialSystem.check_account_balance(account_2)
+      "R$7.00"
+      iex> FinancialSystem.check_account_balance(account_3)
+      "R$8.00"
+  """
+
+  def split_value(billed_accounts, value, percents, operation) do
+
+    unless Enum.sum(percents) == 1 do
+      raise("percents must sum 1")
+    end
+
+    %FinancialSystem.Account{currency: currency} = hd billed_accounts
+    weighted_values = Enum.map_every(percents, 1, fn x -> x * value end)
+
+    billed_accounts =
+    billed_accounts
+    |> Enum.zip(weighted_values)
+    |> Enum.map_every(1, fn billed_account ->
+      {account, weighted_value} = billed_account
+
+      operation.(account, weighted_value, currency)
+    end)
+
+  end
+
+  @doc """
+    Exchange a money among different currencies
+
+  ## Examples
+
+      a = Currency.new(10,:USD)
+      FinancialSystem.exchange(a,:BRL)
+  """
+
+  def exchange(money, to_currency) do
+    %Currency.Money{currency: currency_a} = money
+    rates = FinancialSystem.get_rates
+    {rate_a, rate_b} = {Map.get(rates,currency_a), Map.get(rates,to_currency)}
+    Currency.mult(money, rate_a) |> Currency.mult(rate_b)
   end
 
   def get_rates do
