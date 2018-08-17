@@ -94,8 +94,8 @@ defmodule Currency do
   end
 
   def mult(_money, mult_factor)
-      when mult_factor < 1 do
-    raise(ArgumentError, message: "the multiplier must be bigger than 1")
+      when mult_factor < 0 do
+    raise(ArgumentError, message: "the multiplier must be a positive number")
   end
 
   @doc """
