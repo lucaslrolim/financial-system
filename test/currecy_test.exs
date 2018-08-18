@@ -16,12 +16,22 @@ defmodule CurrencyTest do
 
   test "Creates a currency with arbitrary precision" do
     assert Currency.new(20, :JPY) ==
-             %Currency.Money{amount: Decimal.new("20"), currency: :JPY, precision: 0, symbol: nil}
+             %Currency.Money{
+               amount: Decimal.new("20"),
+               currency: :JPY,
+               precision: 0,
+               atom: Decimal.new("1.0")
+             }
   end
 
   test "Normalize currency precision" do
     assert Currency.new(20.892932737, :JPY) ==
-             %Currency.Money{amount: Decimal.new("20"), currency: :JPY, precision: 0, symbol: nil}
+             %Currency.Money{
+               amount: Decimal.new("20"),
+               currency: :JPY,
+               precision: 0,
+               atom: Decimal.new("1.0")
+             }
   end
 
   test "Error when summing up two different currencies" do

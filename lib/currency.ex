@@ -19,7 +19,7 @@ defmodule Currency do
   ## Examples
 
       iex> Currency.new(10,:BRL)
-      %Currency.Money{amount: Decimal.new("10.00"), currency: :BRL, precision: 2, symbol: nil}
+      %Currency.Money{amount: Decimal.new("10.00"), currency: :BRL, precision: 2, atom: Decimal.new("0.01")}
   """
 
   def new(amount, currency_code) do
@@ -31,7 +31,12 @@ defmodule Currency do
         |> D.new()
         |> D.round(precision, :floor)
 
-      %Currency.Money{currency: currency_code, amount: norm_amount, precision: precision}
+      %Currency.Money{
+        currency: currency_code,
+        amount: norm_amount,
+        precision: precision,
+        atom: D.new(:math.pow(10, -precision))
+      }
     else
       raise(ArgumentError, message: "invalid currency code")
     end
@@ -53,7 +58,7 @@ defmodule Currency do
       iex> a = Currency.new(10,:BRL)
       iex> b = Currency.new(10.50,:BRL)
       iex> Currency.sum(a,b)
-      %Currency.Money{amount: Decimal.new("20.50"), currency: :BRL, precision: 2, symbol: nil}
+      %Currency.Money{amount: Decimal.new("20.50"), currency: :BRL, precision: 2, atom: Decimal.new("0.01")}
   """
 
   def sum(
@@ -82,7 +87,7 @@ defmodule Currency do
       iex> a = Currency.new(20.70,:BRL)
       iex> b = Currency.new(10.50,:BRL)
       iex> Currency.sub(a,b)
-      %Currency.Money{amount: Decimal.new("10.20"), currency: :BRL, precision: 2, symbol: nil}
+      %Currency.Money{amount: Decimal.new("10.20"), currency: :BRL, precision: 2, atom: Decimal.new("0.01")}
   """
 
   def sub(
@@ -108,11 +113,19 @@ defmodule Currency do
 
       iex> a = Currency.new(10.50,:BRL)
       iex> Currency.mult(a, 2)
-      %Currency.Money{amount: Decimal.new("21.00"), currency: :BRL, precision: 2, symbol: nil}
+      %Currency.Money{amount: Decimal.new("21.00"), currency: :BRL, precision: 2, atom: Decimal.new("0.01")}
   """
 
-  def mult(%Currency.Money{amount: amount, precision: precision} = money, mult_factor) do
+  def mult(
+        %Currency.Money{amount: amount, precision: precision, atom: money_atom} = money,
+        mult_factor
+      ) do
     result = D.mult(amount, D.new(mult_factor)) |> D.round(precision, :floor)
+
+    if D.compare(money_atom, result) == D.new(1) do
+      raise("value to low to be properly represented")
+    end
+
     %Currency.Money{money | amount: result}
   end
 
@@ -141,27 +154,28 @@ defmodule Currency do
           amount: Decimal.new("0.00"),
           currency: :BRL,
           precision: 2,
-          symbol: nil
+          atom: Decimal.new("0.01"),
         },
         result:
         %Currency.Money{
           amount: Decimal.new("15.00"),
           currency: :BRL,
           precision: 2,
-          symbol: nil
+          atom: Decimal.new("0.01")
         }
       }
   """
 
-  def div(%Currency.Money{amount: amount, precision: precision} = money, div_factor) do
+  def div(
+        %Currency.Money{amount: amount, precision: precision, atom: money_atom} = money,
+        div_factor
+      ) do
     result_amount =
       D.div(amount, D.new(div_factor))
       |> D.round(precision, :floor)
 
     result = %Currency.Money{money | amount: result_amount}
     rem = Currency.sub(money, Currency.mult(result, D.new(div_factor)))
-
-    money_atom = D.new(:math.pow(10, -precision))
 
     if Decimal.compare(money_atom, result_amount) == D.new(1) do
       raise("value to low to be properly represented")
@@ -209,7 +223,7 @@ defmodule Currency do
 
   ## Examples
 
-      iex> currencies = Currency.get_currency_precison(:BRL)
+      iex> Currency.get_currency_precison(:BRL)
       2
   """
   def get_currency_precison(currency_code) do

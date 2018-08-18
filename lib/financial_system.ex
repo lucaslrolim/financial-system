@@ -15,7 +15,7 @@ defmodule FinancialSystem do
           amount: Decimal.new("0.00"),
           currency: :BRL,
           precision: 2,
-          symbol: nil
+          atom: Decimal.new("0.01")
         },
         currency: :BRL,
         id: 1,
@@ -33,7 +33,16 @@ defmodule FinancialSystem do
 
   def deposit(_account, deposit_value, _currecy)
       when deposit_value < 0 do
-    raise("deposit value must be a positive number")
+    raise(ArgumentError, message: "deposit value must be a positive number")
+  end
+
+  def deposit(
+        %FinancialSystem.Account{currency: currency},
+        _deposit_value,
+        deposit_curency
+      )
+      when currency != deposit_curency do
+    raise(ArgumentError, message: "the account don't support this currency")
   end
 
   @doc """
@@ -54,13 +63,19 @@ defmodule FinancialSystem do
         deposit_value,
         deposit_curency
       ) do
+    %{atom: money_atom} = account_balance
+
+    unless FinancialSystem.compare?(Decimal.new(deposit_value), money_atom) do
+      raise(ArgumentError, message: "value to low to be operated")
+    end
+
     new_balance = Currency.sum(Currency.new(deposit_value, deposit_curency), account_balance)
     %FinancialSystem.Account{account | balance: new_balance}
   end
 
   def withdrawal(_account, withdrawal_value, _currecy)
       when withdrawal_value < 0 do
-    raise("withdrawal value must be a positive number")
+    raise(ArgumentError, message: "withdrawal value must be a positive number")
   end
 
   @doc """
@@ -84,18 +99,20 @@ defmodule FinancialSystem do
         withdrawal_value,
         withdrawal_curency
       ) do
+    %{atom: money_atom, amount: account_funds} = account_balance
+
+    unless FinancialSystem.compare?(Decimal.new(withdrawal_value), money_atom) do
+      raise(ArgumentError, message: "value to low to be operated")
+    end
+
+    unless FinancialSystem.compare?(account_funds, Decimal.new(withdrawal_value)) do
+      raise("account have no funds")
+    end
+
     new_balance =
       Currency.sub(account_balance, Currency.new(withdrawal_value, withdrawal_curency))
 
     %FinancialSystem.Account{account | balance: new_balance}
-  end
-
-  @doc """
-    Checks if the account balance is bigger than a value.
-  """
-  def has_fund?(%FinancialSystem.Account{balance: %{amount: account_fund}}, value)
-      when account_fund < value do
-    raise("insufficient funds to complete the withdrawal")
   end
 
   @doc """
@@ -162,10 +179,12 @@ defmodule FinancialSystem do
   """
   def transfer_international(sender_account, receiver_account, to_currency, value) do
     %FinancialSystem.Account{balance: money, currency: from_currency} = sender_account
-    currency_value = Currency.new(value,to_currency)
+    currency_value = Currency.new(value, to_currency)
     %{amount: coverted_value} = FinancialSystem.exchange(currency_value, from_currency)
 
-    sender_account = FinancialSystem.withdrawal(sender_account, Decimal.to_float(coverted_value), from_currency)
+    sender_account =
+      FinancialSystem.withdrawal(sender_account, Decimal.to_float(coverted_value), from_currency)
+
     receiver_account = FinancialSystem.deposit(receiver_account, value, to_currency)
 
     {sender_account, receiver_account}
@@ -192,9 +211,8 @@ defmodule FinancialSystem do
   """
 
   def split_transfer(sender_account, receivers, value, percents) do
-
     unless Enum.sum(percents) == 1 do
-      raise("percents must sum 1")
+      raise(ArgumentError, message: "percents must sum 1")
     end
 
     %FinancialSystem.Account{currency: currency} = sender_account
@@ -220,38 +238,53 @@ defmodule FinancialSystem do
   ## Examples
 
       iex> account_1 = FinancialSystem.create_account(1, "Proximus", :BRL)
-      iex> account_1 = FinancialSystem.deposit(account_1, 10, :BRL)
       iex> account_2 = FinancialSystem.create_account(2, "Bolinha", :BRL)
-      iex> account_2 = FinancialSystem.deposit(account_2, 10, :BRL)
       iex> account_3 = FinancialSystem.create_account(3, "Botafogo", :BRL)
-      iex> account_3 = FinancialSystem.deposit(account_3, 10, :BRL)
-      iex> [account_1,account_2,account_3] = FinancialSystem.split_value([account_1, account_2, account_3],10,[0.5, 0.3, 0.2], &FinancialSystem.withdrawal/3)
+      iex> [account_1,account_2,account_3] = FinancialSystem.split_value([account_1, account_2, account_3],10,[0.5, 0.3, 0.2], &FinancialSystem.deposit/3)
       iex> FinancialSystem.check_account_balance(account_1)
       "R$5.00"
       iex> FinancialSystem.check_account_balance(account_2)
-      "R$7.00"
+      "R$3.00"
       iex> FinancialSystem.check_account_balance(account_3)
-      "R$8.00"
+      "R$2.00"
   """
 
   def split_value(billed_accounts, value, percents, operation) do
-
     unless Enum.sum(percents) == 1 do
       raise("percents must sum 1")
     end
 
-    %FinancialSystem.Account{currency: currency} = hd billed_accounts
+    %FinancialSystem.Account{currency: currency} = hd(billed_accounts)
     weighted_values = Enum.map_every(percents, 1, fn x -> x * value end)
 
     billed_accounts =
-    billed_accounts
-    |> Enum.zip(weighted_values)
-    |> Enum.map_every(1, fn billed_account ->
-      {account, weighted_value} = billed_account
+      billed_accounts
+      |> Enum.zip(weighted_values)
+      |> Enum.map_every(1, fn billed_account ->
+        {account, weighted_value} = billed_account
 
-      operation.(account, weighted_value, currency)
-    end)
+        operation.(account, weighted_value, currency)
+      end)
+  end
 
+  @doc """
+    Checks if a given valie can be properly operated in the currency
+
+  ## Examples
+
+      a = Currency.new(10,:USD)
+      %{money: money_atom} =  Currency.new(10,:USD)
+      FinancialSystem.compare?(money_atom, 0.0001)
+      false
+  """
+
+  def compare?(value, currency_atom) do
+    if Decimal.compare(value, currency_atom) == Decimal.new(1) or
+         Decimal.equal?(value, currency_atom) == true do
+      true
+    else
+      false
+    end
   end
 
   @doc """
@@ -265,8 +298,8 @@ defmodule FinancialSystem do
 
   def exchange(money, to_currency) do
     %Currency.Money{currency: currency_a} = money
-    rates = FinancialSystem.get_rates
-    {rate_a, rate_b} = {Map.get(rates,currency_a), Map.get(rates,to_currency)}
+    rates = FinancialSystem.get_rates()
+    {rate_a, rate_b} = {Map.get(rates, currency_a), Map.get(rates, to_currency)}
     Currency.mult(money, rate_a) |> Currency.mult(rate_b)
   end
 
