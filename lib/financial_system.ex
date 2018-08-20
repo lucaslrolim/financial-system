@@ -50,7 +50,7 @@ defmodule FinancialSystem do
   @spec deposit!(account_type, number, atom) :: account_type
   def deposit!(_account, deposit_value, _currecy)
       when deposit_value < 0 do
-    raise(ArgumentError, message: "deposit! value must be a positive number")
+    raise(ArgumentError, message: "deposit value must be a positive number")
   end
 
   def deposit!(
@@ -86,10 +86,13 @@ defmodule FinancialSystem do
       raise(ArgumentError, message: "value to low to be operated")
     end
 
-    {:ok, new_balance} =
+    {status, result} =
       Currency.sum(Currency.new!(deposit_value, deposit_curency), account_balance)
 
-    %FinancialSystem.Account{account | balance: new_balance}
+    case {status, result} do
+      {:ok, result} -> %FinancialSystem.Account{account | balance: result}
+      {:error, message} -> raise(message)
+    end
   end
 
   @spec withdrawal!(account_type, number, atom) :: account_type
@@ -129,10 +132,13 @@ defmodule FinancialSystem do
       raise("account have no funds")
     end
 
-    {:ok, new_balance} =
+    {status, new_balance} =
       Currency.sub(account_balance, Currency.new!(withdrawal_value, withdrawal_curency))
 
-    %FinancialSystem.Account{account | balance: new_balance}
+    case {status, new_balance} do
+      {:ok, result} -> %FinancialSystem.Account{account | balance: result}
+      {:error, message} -> raise(message)
+    end
   end
 
   @doc """
@@ -200,6 +206,7 @@ defmodule FinancialSystem do
   """
   @spec transfer_international!(account_type, account_type, atom, number) ::
           {account_type, account_type}
+
   def transfer_international!(sender_account, receiver_account, to_currency, value) do
     %FinancialSystem.Account{currency: from_currency} = sender_account
     currency_value = Currency.new!(value, to_currency)
@@ -234,9 +241,10 @@ defmodule FinancialSystem do
   """
   @spec split_transfer!(account_type, [account_type], number, [float]) ::
           {account_type, [account_type]}
+
   def split_transfer!(sender_account, receivers, value, percents) do
-    unless Enum.sum(percents) == 1 do
-      raise(ArgumentError, message: "percents must sum 1")
+    unless (Enum.sum(percents) == 1) and (Enum.any?(percents, fn x -> x < 0 end) == false) do
+      raise(ArgumentError, message: "ivalid percents")
     end
 
     %FinancialSystem.Account{currency: currency} = sender_account
@@ -275,8 +283,8 @@ defmodule FinancialSystem do
   """
   @spec split_value!([account_type], number, [float], function) :: [account_type]
   def split_value!(billed_accounts, value, percents, operation) do
-    unless Enum.sum(percents) == 1 do
-      raise("percents must sum 1")
+    unless (Enum.sum(percents) == 1) and (Enum.any?(percents, fn x -> x < 0 end) == false) do
+      raise(ArgumentError, message: "ivalid percents")
     end
 
     %FinancialSystem.Account{currency: currency} = hd(billed_accounts)
@@ -327,7 +335,8 @@ defmodule FinancialSystem do
     %Currency.Money{currency: currency_a} = money
     rates = FinancialSystem.get_rates()
     {rate_a, rate_b} = {Map.get(rates, currency_a), Map.get(rates, to_currency)}
-    {:ok, currency_to_usd} = Currency.mult(money, rate_a)
+
+    {_status, currency_to_usd} = Currency.mult(money, rate_a)
 
     case Currency.mult(currency_to_usd, rate_b) do
       {:ok, result} -> result

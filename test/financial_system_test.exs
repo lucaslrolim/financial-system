@@ -47,13 +47,13 @@ defmodule FinancialSystemTest do
     end
   end
 
-  test "Error when tries a transfer! and have no funds", %{account_1: sender, account_2: receiver} do
+  test "Error when tries a transfer and have no funds", %{account_1: sender, account_2: receiver} do
     assert_raise RuntimeError, fn ->
       FinancialSystem.transfer!(sender, receiver, 100)
     end
   end
 
-  test "Error when tries to do a normal transfer! between accounts that use the same currency", %{
+  test "Error when tries to do a normal transfer between accounts that use the same currency", %{
     account_1: sender,
     account_6: receiver
   } do
@@ -62,7 +62,7 @@ defmodule FinancialSystemTest do
     end
   end
 
-  test "Error when tries international transfer! and have no funds after exchange", %{
+  test "Error when tries international transfer and have no funds after exchange", %{
     account_6: sender,
     account_1: receiver
   } do
@@ -73,7 +73,7 @@ defmodule FinancialSystemTest do
     end
   end
 
-  test "Error when split transfer! percent inputs don't sum 1", %{
+  test "Error when split transfer percent inputs don't sum 1", %{
     account_1: sender,
     account_2: receiver_1,
     account_3: receiver_2
